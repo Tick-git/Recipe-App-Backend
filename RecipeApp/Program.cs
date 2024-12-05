@@ -8,10 +8,13 @@ namespace RecipeApp
         {
             using (var context = new RecipeContext())
             {
-                Recipe? cookieRecipe = context.Recipes.
-                    Include(r => r.RecipeIngredients).
-                    ThenInclude(ri => ri.Ingredient).
-                    Where(r => r.Name == "Cookies").FirstOrDefault();
+                Recipe? cookieRecipe = context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                        .ThenInclude(ri => ri.Ingredient)
+                    .Include(r => r.RecipeIngredients)
+                        .ThenInclude(ri => ri.QuantityUnit)
+                    .Where(r => r.Name == "Cookies")
+                    .FirstOrDefault();
 
                 if (cookieRecipe == null)
                 {
@@ -24,41 +27,33 @@ namespace RecipeApp
 
                     foreach(var recipeIngredient in cookieRecipe.RecipeIngredients)
                     {
-                        Console.WriteLine($"    {recipeIngredient.Ingredient.Name}  {recipeIngredient.Quantity} {GetUnitAsString(recipeIngredient.QuantityUnit)}");
+                        Console.WriteLine($"    {recipeIngredient.Quantity} {recipeIngredient.QuantityUnit.Symbol}  {recipeIngredient.Ingredient.Name}");
                     }
                 }
             }
         }
 
-        private static object GetUnitAsString(QuantityUnit quantityUnit)
-        {
-            switch(quantityUnit)
-            {
-                case QuantityUnit.Gramm: return "g";
-                default: return "g";
-            }
-        }
-
         private static void AddCookieRecipe(RecipeContext context)
         {
-            Recipe cookieRecipe = new Recipe() { Name = "Cookies" };
+            Recipe cookieRecipe = new() { Name = "Cookies" };
 
             Ingredient sugar = new() { Name = "Sugar" };
             Ingredient flour = new() { Name = "Flour" };
+            Ingredient bakingsoda = new() { Name = "Baking soda" };
 
-            RecipeIngredient recipeIngredient1 =
-                new() { Recipe = cookieRecipe, Ingredient = sugar, Quantity = 100.0f, QuantityUnit = QuantityUnit.Gramm };
+            QuantityUnit gramm = new() { Name = "Gramm", Symbol = "g"};
+            QuantityUnit teaspoon = new() { Name = "Teaspoon", Symbol = "tsp"};
 
-            RecipeIngredient recipeIngredient2 =
-                new() { Recipe = cookieRecipe, Ingredient = flour, Quantity = 200.0f, QuantityUnit = QuantityUnit.Gramm };
+            List<RecipeIngredient> cookieRecipeIngredients = new()
+            {
+                { new() { Recipe = cookieRecipe, Ingredient = sugar, Quantity = 100.0f, QuantityUnit = gramm }},
+                { new() { Recipe = cookieRecipe, Ingredient = flour, Quantity = 200.0f, QuantityUnit = gramm }},
+                { new() { Recipe = cookieRecipe, Ingredient = bakingsoda, Quantity = 1.0f, QuantityUnit = teaspoon}}
+            };
+
+            cookieRecipe.RecipeIngredients.AddRange(cookieRecipeIngredients);
 
             context.Recipes.Add(cookieRecipe);
-
-            context.Ingredients.Add(sugar);
-            context.Ingredients.Add(flour);
-
-            context.RecipeIngredients.Add(recipeIngredient1);
-            context.RecipeIngredients.Add(recipeIngredient2);
 
             context.SaveChanges();
         }
@@ -69,6 +64,7 @@ namespace RecipeApp
         public DbSet<Ingredient> Ingredients { get; set; }
         public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
         public DbSet<Recipe> Recipes { get; set; }
+        public DbSet<QuantityUnit> QuantityUnits { get; set; }
 
         public RecipeContext()
         {
@@ -127,8 +123,10 @@ namespace RecipeApp
         public required QuantityUnit QuantityUnit { get; set; }
     }
 
-    public enum QuantityUnit
+    public class QuantityUnit
     {
-        Gramm
+        public int Id { get; set; }
+        public required string Name { get; set; }
+        public required string Symbol { get; set; }
     }
 }
