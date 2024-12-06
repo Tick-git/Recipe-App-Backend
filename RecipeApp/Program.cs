@@ -4,60 +4,222 @@ namespace RecipeApp
 {
     public class Program
     {
+
         public static void Main(string[] args)
         {
             using (var context = new RecipeContext())
             {
-                Recipe? cookieRecipe = context.Recipes
-                    .Include(r => r.RecipeIngredients)
-                        .ThenInclude(ri => ri.Ingredient)
-                    .Include(r => r.RecipeIngredients)
-                        .ThenInclude(ri => ri.QuantityUnit)
-                    .Where(r => r.Name == "Cookies")
-                    .FirstOrDefault();
+                string recipeName = "Cookies";
 
-                if (cookieRecipe == null)
+                IRecipeService recipeService = new RecipeService(
+                    new RecipeRepository(context), 
+                    new IngredientRepository(context),
+                    new QuantityUnitRepository(context));
+
+                RecipeDto? cookieRecipeDto = recipeService.GetRecipeByName(recipeName);
+
+                if (cookieRecipeDto == null)
                 {
-                    AddCookieRecipe(context);
+                    cookieRecipeDto = GetCookieRecipeDto(recipeName);
+
+                    recipeService.AddRecipe(cookieRecipeDto);
+
                     Console.WriteLine("Cookie Recipe added");
-                } 
+                }
                 else
                 {
-                    Console.WriteLine("Cookie Recipe needs: ");
-
-                    foreach(var recipeIngredient in cookieRecipe.RecipeIngredients)
+                    Console.WriteLine("Cookie Recipe needs: ");    
+                    
+                    foreach(var recipeIngredientDto in cookieRecipeDto.RecipeIngredientDtos)
                     {
-                        Console.WriteLine($"    {recipeIngredient.Quantity} {recipeIngredient.QuantityUnit.Symbol}  {recipeIngredient.Ingredient.Name}");
+                        Console.WriteLine($"    {recipeIngredientDto.Name}  {recipeIngredientDto.Quantity} {recipeIngredientDto.UnitSymbol}");
                     }
                 }
             }
         }
 
-        private static void AddCookieRecipe(RecipeContext context)
+        private static RecipeDto GetCookieRecipeDto(string recipeName)
         {
-            Recipe cookieRecipe = new() { Name = "Cookies" };
-
-            Ingredient sugar = new() { Name = "Sugar" };
-            Ingredient flour = new() { Name = "Flour" };
-            Ingredient bakingsoda = new() { Name = "Baking soda" };
-
-            QuantityUnit gramm = new() { Name = "Gramm", Symbol = "g"};
-            QuantityUnit teaspoon = new() { Name = "Teaspoon", Symbol = "tsp"};
-
-            List<RecipeIngredient> cookieRecipeIngredients = new()
+            List<RecipeIngredientDto> recipeIngredientDto = new()
             {
-                { new() { Recipe = cookieRecipe, Ingredient = sugar, Quantity = 100.0f, QuantityUnit = gramm }},
-                { new() { Recipe = cookieRecipe, Ingredient = flour, Quantity = 200.0f, QuantityUnit = gramm }},
-                { new() { Recipe = cookieRecipe, Ingredient = bakingsoda, Quantity = 1.0f, QuantityUnit = teaspoon}}
+                new RecipeIngredientDto() { Name = "Sugar", Quantity = 100.0f, UnitSymbol = "g"},
+                new RecipeIngredientDto() { Name = "Flour", Quantity = 200.0f, UnitSymbol = "g"},
+                new RecipeIngredientDto() { Name = "Baking soda", Quantity = 1.0f, UnitSymbol = "tsp"},
+
             };
 
-            cookieRecipe.RecipeIngredients.AddRange(cookieRecipeIngredients);
-
-            context.Recipes.Add(cookieRecipe);
-
-            context.SaveChanges();
+            return new RecipeDto() { Name = recipeName, RecipeIngredientDtos = recipeIngredientDto }; 
         }
     }
+
+    public interface IRecipeRepository
+    {
+        public void AddRecipe(Recipe recipe);
+
+        public Recipe? GetRecipeByName(string name);
+    }
+
+    public class RecipeRepository : IRecipeRepository
+    {
+        RecipeContext _recipeContext;
+
+        public RecipeRepository(RecipeContext recipeContext)
+        {
+            _recipeContext = recipeContext;
+        }
+
+        public void AddRecipe(Recipe recipe)
+        {
+            _recipeContext.Recipes.Add(recipe);
+
+            _recipeContext.SaveChanges();
+        }
+
+        public Recipe? GetRecipeByName(string name)
+        {
+            return _recipeContext.Recipes
+                    .Include(r => r.RecipeIngredients)
+                        .ThenInclude(ri => ri.Ingredient)
+                    .Include(r => r.RecipeIngredients)
+                        .ThenInclude(ri => ri.QuantityUnit)
+                    .Where(r => r.Name == name)
+                    .FirstOrDefault();
+        }
+    }
+
+    public interface IRecipeService
+    {
+        public void AddRecipe(RecipeDto recipe);
+        public RecipeDto? GetRecipeByName(string name); 
+    }
+
+    public class RecipeDto
+    {
+        public required string Name { get; set; }
+        public List<RecipeIngredientDto> RecipeIngredientDtos { get; set; } = new();
+    }
+
+    public class RecipeIngredientDto
+    {
+        public required string Name { get; set; }
+        public required double Quantity { get; set; }
+
+        public required string UnitSymbol { get; set; }
+    }
+
+    public class RecipeService : IRecipeService
+    {
+        IRecipeRepository _recipeRepository;
+        IIngredientRepository _ingredientRepository;
+        IQuantityUnitRepository _quantityRepository;
+
+        public RecipeService(IRecipeRepository recipeRepository, IIngredientRepository ingredientRepository, IQuantityUnitRepository quantityUnitRepository)
+        {
+            _recipeRepository = recipeRepository;
+            _ingredientRepository = ingredientRepository;
+            _quantityRepository = quantityUnitRepository;
+        }
+
+        public void AddRecipe(RecipeDto recipeDto)
+        {
+            Recipe recipe = new() { Name = recipeDto.Name };
+
+            foreach(var recipeIngredientDto in recipeDto.RecipeIngredientDtos)
+            {
+                Ingredient? ingredient = _ingredientRepository.GetIngredientByName(recipeIngredientDto.Name);
+                QuantityUnit? quantityUnit = _quantityRepository.GetQuantityUnitBySymbol(recipeIngredientDto.UnitSymbol);
+
+                if(ingredient == null)
+                {
+                    ingredient = new Ingredient() { Name = recipeIngredientDto.Name };
+                }
+
+                if(quantityUnit == null)
+                {
+                    quantityUnit = new QuantityUnit() { Name = "ToDO", Symbol = recipeIngredientDto.UnitSymbol };
+                }
+
+                RecipeIngredient recipeIngredient = new() 
+                { 
+                    Ingredient = ingredient, 
+                    Recipe = recipe, 
+                    Quantity = recipeIngredientDto.Quantity, 
+                    QuantityUnit = quantityUnit 
+                };
+
+                recipe.RecipeIngredients.Add(recipeIngredient);
+            }
+
+            _recipeRepository.AddRecipe(recipe);
+        }
+
+        public RecipeDto? GetRecipeByName(string name)
+        {
+            Recipe? recipe = _recipeRepository.GetRecipeByName(name);
+
+            if (recipe == null)
+                return null;
+
+            List<RecipeIngredientDto> recipeIngredientDtos = new();
+
+            foreach(var recipeIngredient in recipe.RecipeIngredients)
+            {
+                recipeIngredientDtos.Add(new RecipeIngredientDto()
+                {
+                    Name = recipeIngredient.Ingredient.Name,
+                    Quantity = recipeIngredient.Quantity,
+                    UnitSymbol = recipeIngredient.QuantityUnit.Symbol
+                });                   
+            }
+
+            return new RecipeDto() { Name = recipe.Name, RecipeIngredientDtos = recipeIngredientDtos};
+        }
+    }
+
+    public interface IQuantityUnitRepository
+    {
+        public QuantityUnit? GetQuantityUnitBySymbol(string symbol);
+    }
+
+    public class QuantityUnitRepository : IQuantityUnitRepository
+    {
+        RecipeContext _recipeContext;
+
+        public QuantityUnitRepository(RecipeContext recipeContext)
+        {
+            _recipeContext = recipeContext;
+        }
+
+        public QuantityUnit? GetQuantityUnitBySymbol(string symbol)
+        {
+            return _recipeContext.QuantityUnits
+                .Where(qu => qu.Symbol == symbol)
+                .FirstOrDefault();
+        }
+    }
+
+    public interface IIngredientRepository
+    {
+        public Ingredient? GetIngredientByName(string name);
+    }
+
+    public class IngredientRepository : IIngredientRepository
+    {
+        RecipeContext _recipeContext;
+
+        public IngredientRepository(RecipeContext recipeContext)
+        {
+            _recipeContext = recipeContext;
+        }
+
+        public Ingredient? GetIngredientByName(string name)
+        {
+            return _recipeContext.Ingredients
+                .Where(i => i.Name == name)
+                .FirstOrDefault();
+        }
+    }
+
 
     public class RecipeContext : DbContext
     {
