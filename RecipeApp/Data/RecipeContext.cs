@@ -36,6 +36,14 @@ namespace RecipeApp.Data
                 .HasOne(ri => ri.Ingredient)
                 .WithMany(i => i.RecipeIngredients)
                 .HasForeignKey(ri => ri.IngredientId);
+
+            modelBuilder.Entity<QuantityUnit>().HasData(
+                new QuantityUnit { Id = 1, Name = "Gram", Symbol = "g" },
+                new QuantityUnit { Id = 2, Name = "Kilogram", Symbol = "kg" },
+                new QuantityUnit { Id = 3, Name = "Liter", Symbol = "l" },
+                new QuantityUnit { Id = 4, Name = "Milliliter", Symbol = "ml" },
+                new QuantityUnit { Id = 5, Name = "Teaspoon", Symbol = "tsp" },
+                new QuantityUnit { Id = 6, Name = "Tablespoon", Symbol = "tbsp" });
         }
     }
 }

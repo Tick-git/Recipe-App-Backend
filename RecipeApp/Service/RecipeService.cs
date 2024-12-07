@@ -31,9 +31,12 @@ namespace RecipeApp.Service
                     ingredient = new Ingredient() { Name = recipeIngredientDto.Name };
                 }
 
-                if(quantityUnit == null)
+                // TODO: Validation in ServiceLayer?
+                // https://stackoverflow.com/questions/16793982/separating-the-service-layer-from-the-validation-layer
+
+                if (quantityUnit == null)
                 {
-                    quantityUnit = new QuantityUnit() { Name = "TODO", Symbol = recipeIngredientDto.UnitSymbol };
+                    throw new InvalidOperationException($"Unit symbol: {recipeIngredientDto.UnitSymbol} could not be found in database");
                 }
 
                 RecipeIngredient recipeIngredient = new()
