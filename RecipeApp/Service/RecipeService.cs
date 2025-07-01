@@ -19,12 +19,13 @@ namespace RecipeApp.Service
 
         public void AddRecipe(RecipeDto recipeDto)
         {
-            Recipe recipe = new() { Name = recipeDto.Name };
+            // TODO: #001
+            Recipe recipe = new() { Name = recipeDto.GeneralData.Name };
 
-            foreach (var recipeIngredientDto in recipeDto.RecipeIngredientDtos)
+            foreach (var recipeIngredientDto in recipeDto.Ingredients)
             {
                 Ingredient? ingredient = _ingredientRepository.GetIngredientByName(recipeIngredientDto.Name);
-                QuantityUnit? quantityUnit = _quantityRepository.GetQuantityUnitBySymbol(recipeIngredientDto.UnitSymbol);
+                QuantityUnit? quantityUnit = _quantityRepository.GetQuantityUnitBySymbol(recipeIngredientDto.Unit);
 
                 if (ingredient == null)
                 {
@@ -36,14 +37,14 @@ namespace RecipeApp.Service
 
                 if (quantityUnit == null)
                 {
-                    throw new InvalidOperationException($"Unit symbol: {recipeIngredientDto.UnitSymbol} could not be found in database");
+                    throw new InvalidOperationException($"Unit symbol: {recipeIngredientDto.Unit} could not be found in database");
                 }
 
                 RecipeIngredient recipeIngredient = new()
                 {
                     Ingredient = ingredient,
                     Recipe = recipe,
-                    Quantity = recipeIngredientDto.Quantity,
+                    Quantity = double.Parse(recipeIngredientDto.Quantity),
                     QuantityUnit = quantityUnit
                 };
 
@@ -59,20 +60,26 @@ namespace RecipeApp.Service
 
             if (recipe == null)
                 return null;
-
-            List<RecipeIngredientDto> recipeIngredientDtos = new();
+            
+            // TODO: #001
+            GeneralDataDto generalData = new() { Name = recipe.Name, Author = "", Difficulty = "", Time = ""};
+            List<InstructionDto> instructions = new();
+            List<IngredientDto> recipeIngredientDtos = new();
 
             foreach (var recipeIngredient in recipe.RecipeIngredients)
             {
-                recipeIngredientDtos.Add(new RecipeIngredientDto()
+                recipeIngredientDtos.Add(new IngredientDto()
                 {
                     Name = recipeIngredient.Ingredient.Name,
-                    Quantity = recipeIngredient.Quantity,
-                    UnitSymbol = recipeIngredient.QuantityUnit.Symbol
+                    Quantity = recipeIngredient.Quantity.ToString(),
+                    Unit = recipeIngredient.QuantityUnit.Symbol
                 });
             }
 
-            return new RecipeDto() { Name = recipe.Name, RecipeIngredientDtos = recipeIngredientDtos };
+            return new RecipeDto() { GeneralData = generalData, Ingredients = recipeIngredientDtos, Instructions = instructions };
         }
     }
 }
+
+// Issue: #001
+// Extend the Recipe Model to include classes GeneralData + Instructions
