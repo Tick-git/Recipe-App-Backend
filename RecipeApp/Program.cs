@@ -7,22 +7,28 @@ namespace RecipeApp
     {
         public static void Main(string[] args)
         {
-            using (var context = new RecipeContext())
-            {
-                string recipeName = "Cookies";
+            string recipeName = "Cookies";
 
+            var webAppBuilder = WebApplication.CreateBuilder(args);
+            webAppBuilder.Services.AddCors();
+
+            var app = webAppBuilder.Build();
+
+            app.UseCors(policy => policy.AllowAnyOrigin());
+
+            app.MapGet("/", () =>
+            {
+                using var context = new RecipeContext();
                 IRecipeService recipeService = new RecipeService(
                     new RecipeRepository(context),
                     new IngredientRepository(context),
-                    new QuantityUnitRepository(context));
+                    new QuantityUnitRepository(context)
+                );
 
-                var builder = WebApplication.CreateBuilder(args);
-                var app = builder.Build();
+                return recipeService.GetRecipeByName(recipeName);
+            });
 
-                app.MapGet("/", () => recipeService.GetRecipeByName(recipeName));
-
-                app.Run();
-            }
+            app.Run();
         }
     }
 }
