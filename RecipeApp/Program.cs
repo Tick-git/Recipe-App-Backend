@@ -1,4 +1,5 @@
 ﻿using RecipeApp.Data;
+using RecipeApp.Dto;
 using RecipeApp.Service;
 
 namespace RecipeApp
@@ -7,16 +8,14 @@ namespace RecipeApp
     {
         public static void Main(string[] args)
         {
-            string recipeName = "Cookies";
-
             var webAppBuilder = WebApplication.CreateBuilder(args);
             webAppBuilder.Services.AddCors();
 
             var app = webAppBuilder.Build();
 
-            app.UseCors(policy => policy.AllowAnyOrigin());
+            app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyHeader());
 
-            app.MapGet("/", () =>
+            app.MapGet("/recipes/{recipeName}", (string recipeName) =>
             {
                 using var context = new RecipeContext();
                 IRecipeService recipeService = new RecipeService(
@@ -26,6 +25,18 @@ namespace RecipeApp
                 );
 
                 return recipeService.GetRecipeByName(recipeName);
+            });
+
+            app.MapPost("/recipes", (RecipeDto dto) =>
+            {
+                using var context = new RecipeContext();
+                var recipeService = new RecipeService(
+                    new RecipeRepository(context),
+                    new IngredientRepository(context),
+                    new QuantityUnitRepository(context)
+                );
+                recipeService.AddRecipe(dto);
+                return Results.Created($"/recipes/{dto.GeneralData.Name}", dto);
             });
 
             app.Run();
