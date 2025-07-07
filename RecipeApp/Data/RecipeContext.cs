@@ -10,7 +10,7 @@ namespace RecipeApp.Data
         public DbSet<Recipe> Recipes { get; set; }
         public DbSet<QuantityUnit> QuantityUnits { get; set; }
 
-        public RecipeContext()
+        public RecipeContext(DbContextOptions<RecipeContext> options) : base(options)
         {
             Database.EnsureCreated();
         }
