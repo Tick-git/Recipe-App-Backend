@@ -18,7 +18,7 @@ namespace RecipeApp
             webAppBuilder.Services.AddScoped<IRecipeService, RecipeService>();
 
             webAppBuilder.Services.AddDbContext<RecipeContext>(opts => 
-                opts.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=True;TrustServerCertificate=True;")
+                opts.UseSqlServer(webAppBuilder.Configuration.GetConnectionString("RecipeDb"))
             );
 
             var app = webAppBuilder.Build();
