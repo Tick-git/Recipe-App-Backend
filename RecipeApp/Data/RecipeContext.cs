@@ -9,15 +9,11 @@ namespace RecipeApp.Data
         public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
         public DbSet<Recipe> Recipes { get; set; }
         public DbSet<QuantityUnit> QuantityUnits { get; set; }
+        public DbSet<RecipeInstruction> RecipeInstructions { get; set; }
 
         public RecipeContext(DbContextOptions<RecipeContext> options) : base(options)
         {
             Database.EnsureCreated();
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=True;TrustServerCertificate=True;");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -36,6 +32,14 @@ namespace RecipeApp.Data
                 .HasOne(ri => ri.Ingredient)
                 .WithMany(i => i.RecipeIngredients)
                 .HasForeignKey(ri => ri.IngredientId);
+
+            modelBuilder.Entity<RecipeInstruction>()
+                .HasKey(ri => new { ri.RecipeId, ri.Step });
+
+            modelBuilder.Entity<RecipeInstruction>()
+                .HasOne(ri => ri.Recipe)
+                .WithMany(ri => ri.RecipeInstructions)
+                .HasForeignKey(ri => ri.RecipeId);
 
             modelBuilder.Entity<QuantityUnit>().HasData(
                 new QuantityUnit { Id = 1, Name = "Gram", Symbol = "g" },

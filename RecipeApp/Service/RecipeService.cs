@@ -22,6 +22,30 @@ namespace RecipeApp.Service
             // TODO: #001
             Recipe recipe = new() { Name = recipeDto.GeneralData.Name };
 
+            AddRecipeIngredients(recipeDto, recipe);
+
+            AddRecipeInstructions(recipeDto, recipe);
+
+            _recipeRepository.AddRecipe(recipe);
+        }
+
+        private void AddRecipeInstructions(RecipeDto recipeDto, Recipe recipe)
+        {
+            foreach(var instructionDto in recipeDto.Instructions)
+            {
+                RecipeInstruction recipeInstruction = new()
+                {
+                    Recipe = recipe,
+                    Step = instructionDto.Step,
+                    Text = instructionDto.Text
+                };
+
+                recipe.RecipeInstructions.Add(recipeInstruction);
+            }
+        }
+
+        private void AddRecipeIngredients(RecipeDto recipeDto, Recipe recipe)
+        {
             foreach (var recipeIngredientDto in recipeDto.Ingredients)
             {
                 Ingredient? ingredient = _ingredientRepository.GetIngredientByName(recipeIngredientDto.Name);
@@ -50,8 +74,6 @@ namespace RecipeApp.Service
 
                 recipe.RecipeIngredients.Add(recipeIngredient);
             }
-
-            _recipeRepository.AddRecipe(recipe);
         }
 
         public RecipeDto? GetRecipeByName(string name)
@@ -63,12 +85,12 @@ namespace RecipeApp.Service
             
             // TODO: #001
             GeneralDataDto generalData = new() { Name = recipe.Name, Author = "", Difficulty = "", Time = ""};
-            List<InstructionDto> instructions = new();
-            List<IngredientDto> recipeIngredientDtos = new();
+            List<InstructionDto> recipeInstructionsDto = new();
+            List<IngredientDto> recipeIngredientsDtos = new();
 
             foreach (var recipeIngredient in recipe.RecipeIngredients)
             {
-                recipeIngredientDtos.Add(new IngredientDto()
+                recipeIngredientsDtos.Add(new()
                 {
                     Name = recipeIngredient.Ingredient.Name,
                     Quantity = recipeIngredient.Quantity.ToString(),
@@ -76,10 +98,19 @@ namespace RecipeApp.Service
                 });
             }
 
-            return new RecipeDto() { GeneralData = generalData, Ingredients = recipeIngredientDtos, Instructions = instructions };
+            foreach(var recipeInstruction in recipe.RecipeInstructions)
+            {
+                recipeInstructionsDto.Add(new()
+                {
+                    Step = recipeInstruction.Step,
+                    Text = recipeInstruction.Text
+                });
+            }
+
+            return new RecipeDto() { GeneralData = generalData, Ingredients = recipeIngredientsDtos, Instructions = recipeInstructionsDto };
         }
     }
 }
 
 // Issue: #001
-// Extend the Recipe Model to include classes GeneralData + Instructions
+// Extend the Recipe Model to include classes GeneralData

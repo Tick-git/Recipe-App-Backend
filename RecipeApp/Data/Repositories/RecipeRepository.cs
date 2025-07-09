@@ -26,6 +26,7 @@ namespace RecipeApp.Data
                         .ThenInclude(ri => ri.Ingredient)
                     .Include(r => r.RecipeIngredients)
                         .ThenInclude(ri => ri.QuantityUnit)
+                    .Include(r => r.RecipeInstructions)
                     .Where(r => r.Name == name)
                     .FirstOrDefault();
         }
